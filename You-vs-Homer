@@ -161,7 +161,6 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main")
 local MainSection = MainTab:CreateSection("Main Features")
 
--- UPDATED: Renamed to just "Esp"
 MainTab:CreateToggle({
     Name = "Esp",
     CurrentValue = false,
@@ -176,7 +175,6 @@ MainTab:CreateToggle({
     end
 })
 
--- UPDATED: Renamed to "Noclip (BE CAUTIOUS)"
 MainTab:CreateToggle({
     Name = "Noclip (BE CAUTIOUS)",
     CurrentValue = false,
@@ -247,7 +245,7 @@ WallhopTab:CreateButton({
 
 WallhopTab:CreateLabel("Press CTRL + 1 to toggle the wallhop menu")
 
--- SUPPORT TAB
+-- SUPPORT TAB (UPDATED DISCORD LINK)
 local SupportTab = Window:CreateTab("Support")
 local SupportSection = SupportTab:CreateSection("Community & Updates")
 
@@ -259,12 +257,12 @@ SupportTab:CreateButton({
             -- For Synapse, Krnl, Script-ware etc.
             if syn and syn.request then
                 syn.request({
-                    Url = "https://discord.gg/K8vZBdCwDz",
+                    Url = "https://discord.gg/27MVu59qdX",
                     Method = "GET"
                 })
             end
             -- For other executors
-            setclipboard("https://discord.gg/K8vZBdCwDz")
+            setclipboard("https://discord.gg/27MVu59qdX")
         end)
         
         Rayfield:Notify({
@@ -275,7 +273,7 @@ SupportTab:CreateButton({
     end
 })
 
-SupportTab:CreateLabel("Discord: https://discord.gg/K8vZBdCwDz")
+SupportTab:CreateLabel("Discord: https://discord.gg/27MVu59qdX")
 SupportTab:CreateLabel("THINGS ARE SUBJECT TO CHANGE")
 
 -- Load notification
