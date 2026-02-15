@@ -1,0 +1,286 @@
+--// Potatoware V1 BETA - Modified By BaconHaxxer1
+-- Features: Full Box ESP (Red with Names), Noclip, Ritual Spin, Wallhop Loader
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- LOAD RAYFIELD
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+-- STATES
+local ESPEnabled = false
+local NoclipEnabled = false
+local WalkSpeedValue = 16
+local RitualSpinEnabled = false
+local SpinSpeed = 15
+
+-- ESP STORAGE
+local ESPTable = {}
+
+-- FUNCTION: CREATE FULL BOX ESP WITH NAMES (RED BOXES)
+local function CreateESP(plr)
+    if ESPTable[plr] then return end
+    
+    -- Create Box Drawing
+    local Box = Drawing.new("Square")
+    Box.Visible = false
+    Box.Color = Color3.new(1, 0, 0) -- Solid Red
+    Box.Thickness = 2
+    Box.Transparency = 1
+    Box.Filled = false
+    
+    -- Create Name Tag Drawing
+    local NameTag = Drawing.new("Text")
+    NameTag.Visible = false
+    NameTag.Color = Color3.new(1, 1, 1) -- White text
+    NameTag.Center = true
+    NameTag.Size = 16
+    NameTag.Outline = true
+    NameTag.Font = 2 -- UI Font
+    
+    ESPTable[plr] = {Box = Box, NameTag = NameTag}
+end
+
+-- FUNCTION: REMOVE ESP
+local function RemoveESP(plr)
+    if ESPTable[plr] then
+        ESPTable[plr].Box:Remove()
+        ESPTable[plr].NameTag:Remove()
+        ESPTable[plr] = nil
+    end
+end
+
+-- FUNCTION: TOGGLE NOCLIP
+local function SetNoclip(state)
+    if not LocalPlayer.Character then return end
+    
+    for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+        if v:IsA("BasePart") then
+            v.CanCollide = not state
+        end
+    end
+end
+
+-- MAIN RENDER LOOP
+RunService.RenderStepped:Connect(function()
+    -- FULL BOX ESP LOGIC (Red boxes with names)
+    for plr, esp in pairs(ESPTable) do
+        local box = esp.Box
+        local nameTag = esp.NameTag
+        
+        if ESPEnabled and plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = plr.Character.HumanoidRootPart
+            local head = plr.Character:FindFirstChild("Head") or hrp
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            local headPos, _ = Camera:WorldToViewportPoint(head.Position)
+            
+            if onScreen then
+                -- Calculate box size based on distance
+                local distance = (Camera.CFrame.Position - hrp.Position).Magnitude
+                local height = (Camera.ViewportSize.Y / math.max(1, distance)) * 15
+                local width = height * 0.6
+                
+                -- Update Box (always red)
+                box.Size = Vector2.new(width, height)
+                box.Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
+                box.Color = Color3.new(1, 0, 0) -- Ensure it stays red
+                box.Visible = true
+                
+                -- Update Name Tag
+                nameTag.Text = plr.Name
+                nameTag.Position = Vector2.new(pos.X, headPos.Y - height/2 - 20)
+                nameTag.Visible = true
+            else
+                box.Visible = false
+                nameTag.Visible = false
+            end
+        else
+            if box then box.Visible = false end
+            if nameTag then nameTag.Visible = false end
+        end
+    end
+
+    -- MAIN CHARACTER CONTROLS
+    if LocalPlayer.Character then
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+        
+        if hrp and hum then
+            -- RITUAL SPIN
+            if RitualSpinEnabled then
+                hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(SpinSpeed), 0)
+            end
+            
+            -- WALK SPEED (BE CAUTIOUS)
+            hum.WalkSpeed = WalkSpeedValue
+            
+            -- NOCLIP
+            if NoclipEnabled then
+                for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if v:IsA("BasePart") and v.CanCollide then
+                        v.CanCollide = false
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- CHARACTER ADDED EVENT
+LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait(0.5)
+    
+    if NoclipEnabled then
+        SetNoclip(true)
+    end
+    
+    if character:FindFirstChild("Humanoid") then
+        character.Humanoid.WalkSpeed = WalkSpeedValue
+    end
+end)
+
+-- PLAYER SETUP AND CLEANUP
+for _, plr in pairs(Players:GetPlayers()) do 
+    CreateESP(plr) 
+end
+
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+-- UI WINDOW
+local Window = Rayfield:CreateWindow({
+    Name = "Potatoware V1",
+    LoadingTitle = "Potatoware",
+    LoadingSubtitle = "V1 BETA",
+    KeySystem = false
+})
+
+local MainTab = Window:CreateTab("Main")
+local MainSection = MainTab:CreateSection("Main Features")
+
+-- UPDATED: Renamed to just "Esp"
+MainTab:CreateToggle({
+    Name = "Esp",
+    CurrentValue = false,
+    Callback = function(v) 
+        ESPEnabled = v 
+        if not v then
+            for _, esp in pairs(ESPTable) do
+                esp.Box.Visible = false
+                esp.NameTag.Visible = false
+            end
+        end
+    end
+})
+
+-- UPDATED: Renamed to "Noclip (BE CAUTIOUS)"
+MainTab:CreateToggle({
+    Name = "Noclip (BE CAUTIOUS)",
+    CurrentValue = false,
+    Callback = function(v) 
+        NoclipEnabled = v 
+        SetNoclip(v)
+    end
+})
+
+MainTab:CreateSlider({
+    Name = "Walkspeed (BE CAUTIOUS)",
+    Range = {16, 200},
+    Increment = 1,
+    CurrentValue = 16,
+    Callback = function(v) 
+        WalkSpeedValue = v 
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = v
+        end
+    end
+})
+
+local RitualTab = Window:CreateTab("Ritual")
+local RitualSection = RitualTab:CreateSection("Ritual Controls")
+
+RitualTab:CreateToggle({
+    Name = "Ritual Spin",
+    CurrentValue = false,
+    Callback = function(v) 
+        RitualSpinEnabled = v 
+    end
+})
+
+RitualTab:CreateSlider({
+    Name = "Spin Speed",
+    Range = {1, 100},
+    Increment = 1,
+    CurrentValue = 15,
+    Callback = function(v) 
+        SpinSpeed = v 
+    end
+})
+
+local WallhopTab = Window:CreateTab("Wallhop")
+local WallhopSection = WallhopTab:CreateSection("Wallhop Scripts")
+
+WallhopTab:CreateButton({
+    Name = "Execute Potatoware Wallhop Script",
+    Callback = function()
+        local success, result = pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-You-vs-Homer-wallhop-91780"))()
+        end)
+        if success then
+            Rayfield:Notify({
+                Title = "Wallhop Loaded",
+                Content = "Press CTRL + 1 to open menu",
+                Duration = 4
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Failed to load wallhop script",
+                Duration = 3
+            })
+        end
+    end
+})
+
+WallhopTab:CreateLabel("Press CTRL + 1 to toggle the wallhop menu")
+
+-- SUPPORT TAB
+local SupportTab = Window:CreateTab("Support")
+local SupportSection = SupportTab:CreateSection("Community & Updates")
+
+SupportTab:CreateButton({
+    Name = "Join Discord Server",
+    Callback = function()
+        -- Try to open the invite link
+        local success = pcall(function()
+            -- For Synapse, Krnl, Script-ware etc.
+            if syn and syn.request then
+                syn.request({
+                    Url = "https://discord.gg/K8vZBdCwDz",
+                    Method = "GET"
+                })
+            end
+            -- For other executors
+            setclipboard("https://discord.gg/K8vZBdCwDz")
+        end)
+        
+        Rayfield:Notify({
+            Title = "Discord Invite",
+            Content = "Invite copied to clipboard!",
+            Duration = 3
+        })
+    end
+})
+
+SupportTab:CreateLabel("Discord: https://discord.gg/K8vZBdCwDz")
+SupportTab:CreateLabel("THINGS ARE SUBJECT TO CHANGE")
+
+-- Load notification
+Rayfield:Notify({
+    Title = "Potatoware V1 BETA",
+    Content = "Loaded successfully! Join Discord for updates.",
+    Duration = 4
+})
