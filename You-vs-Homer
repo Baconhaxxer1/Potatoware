@@ -1,6 +1,6 @@
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
--- ========== ANTICHEAT DISABLER ==========
+
 for i,v in pairs(getconnections(game:GetService("ScriptContext").Error)) do
     v:Disconnect()
 end
@@ -12,13 +12,13 @@ coroutine.wrap(function()
     end
 end)()
 
--- ========== LOAD RAYFIELD ==========
+
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Auto‑copy Discord invite
+
 setclipboard("https://discord.gg/CdDUfPWQR4")
 
--- ========== CREATE WINDOW ==========
+
 local Window = Rayfield:CreateWindow({
     Name = "Potatoware V2",
     Icon = 0,
@@ -44,7 +44,7 @@ local savedValues = {
     jumppower = 50
 }
 
--- ========== MAIN TAB ==========
+
 local MainTab = Window:CreateTab("Main", "home")
 
 MainTab:CreateSlider({
@@ -298,7 +298,7 @@ UtilityTab:CreateButton({
     end
 })
 
--- ========== SUPPORT TAB ==========
+
 local SupportTab = Window:CreateTab("Support", "heart")
 SupportTab:CreateButton({
     Name = "Discord Invite",
@@ -310,7 +310,7 @@ SupportTab:CreateButton({
 })
 SupportTab:CreateLabel("In Beta/WIP")
 
--- ========== SETTINGS TAB ==========
+
 local SettingsTab = Window:CreateTab("Settings", "settings")
 SettingsTab:CreateButton({
     Name = "Destroy UI",
@@ -337,5 +337,5 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
     if platform then platform:Destroy() platform = nil end
 end)
 
--- ========== FINISH ==========
+
 -- No
