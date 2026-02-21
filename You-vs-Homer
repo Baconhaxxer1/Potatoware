@@ -1,10 +1,95 @@
-
-
 repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
-
 local player = game.Players.LocalPlayer
+local supportedGames = {
+    ["4785497374"] = true,
+    ["3203685552"] = true,
+    ["111530421351096"] = true,
+}
+local currentPlaceId = tostring(game.PlaceId)
+local currentGameId = tostring(game.GameId)
 
+if not (supportedGames[currentPlaceId] or supportedGames[currentGameId]) then
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "UnsupportedGame"
+    gui.ResetOnSpawn = false
+    gui.Parent = game:GetService("CoreGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 400, 0, 250)
+    frame.Position = UDim2.new(0.5, -200, 0.5, -125)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    frame.BackgroundTransparency = 0.1
+    frame.Active = true
+    frame.Parent = gui
+    local corner = Instance.new("UICorner"); corner.CornerRadius = UDim.new(0, 12); corner.Parent = frame
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(181,1,31)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(100,0,20))
+    })
+    gradient.Rotation = 90
+    gradient.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -40, 0, 50)
+    title.Position = UDim2.new(0, 20, 0, 20)
+    title.BackgroundTransparency = 1
+    title.Text = "UNSUPPORTED GAME"
+    title.TextColor3 = Color3.new(1,1,1)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 24
+    title.Parent = frame
+
+    local desc = Instance.new("TextLabel")
+    desc.Size = UDim2.new(1, -40, 0, 60)
+    desc.Position = UDim2.new(0, 20, 0, 80)
+    desc.BackgroundTransparency = 1
+    desc.Text = "This game is not supported.\nCheck our Discord for supported games."
+    desc.TextColor3 = Color3.new(1,1,1)
+    desc.Font = Enum.Font.Gotham
+    desc.TextSize = 16
+    desc.TextWrapped = true
+    desc.Parent = frame
+
+    local copyBtn = Instance.new("TextButton")
+    copyBtn.Size = UDim2.new(0, 200, 0, 45)
+    copyBtn.Position = UDim2.new(0.5, -100, 1, -60)
+    copyBtn.BackgroundColor3 = Color3.fromRGB(181,1,31)
+    copyBtn.Text = "COPY DISCORD INVITE"
+    copyBtn.TextColor3 = Color3.new(1,1,1)
+    copyBtn.Font = Enum.Font.GothamBold
+    copyBtn.TextSize = 16
+    copyBtn.Parent = frame
+    local btnCorner = Instance.new("UICorner"); btnCorner.CornerRadius = UDim.new(0, 8); btnCorner.Parent = copyBtn
+    copyBtn.MouseButton1Click:Connect(function()
+        setclipboard("https://discord.gg/CdDUfPWQR4")
+        copyBtn.Text = "COPIED!"
+        task.wait(1)
+        copyBtn.Text = "COPY DISCORD INVITE"
+    end)
+
+    frame.Size = UDim2.new(0, 0, 0, 0)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.BackgroundTransparency = 1
+    title.TextTransparency = 1
+    desc.TextTransparency = 1
+    copyBtn.TextTransparency = 1
+    copyBtn.BackgroundTransparency = 1
+
+    local tweenService = game:GetService("TweenService")
+    tweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 400, 0, 250),
+        Position = UDim2.new(0.5, -200, 0.5, -125),
+        BackgroundTransparency = 0.1
+    }):Play()
+    tweenService:Create(title, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+    tweenService:Create(desc, TweenInfo.new(0.3), { TextTransparency = 0 }):Play()
+    tweenService:Create(copyBtn, TweenInfo.new(0.3), { TextTransparency = 0, BackgroundTransparency = 0 }):Play()
+
+    return
+end
 
 pcall(function()
     local ACtable = {
@@ -16,7 +101,6 @@ pcall(function()
     for _, v in ipairs(ACtable) do if v then v:Destroy() end end
 end)
 
--- Disconnect ScriptContext.Error
 for i,v in pairs(getconnections(game:GetService("ScriptContext").Error)) do v:Disconnect() end
 coroutine.wrap(function()
     while task.wait(1) do
@@ -28,31 +112,28 @@ pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/zinsos/luau/refs/heads/main/YouVsHomerBypass"))()
 end)
 
-
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/orialdev/WindUI-Boreal/refs/heads/main/WindUI%20Boreal"))()
 setclipboard("https://discord.gg/CdDUfPWQR4")
 
-
 local Window = WindUI:CreateWindow({
-    Title = "Potatoware V3",
+    Title = "Potatoware V3.2.1",
     Author = "Made by Baconhaxxer1",
     Size = UDim2.fromOffset(680, 520),
     Icon = "sparkles",
     ModernLayout = true,
     Watermark = {
         Enabled = true,
-        Text = "Potatoware V3 | Baconhaxxer1",
+        Text = "Potatoware V3.2.1 | Baconhaxxer1",
         Position = "bottom-right",
         Size = 14,
         Padding = 12,
     },
 })
 
--- Saved values
-local savedValues = { walkspeed = 16, flyWasOn = false, fullbrightEnabled = false }
-
+local savedValues = { walkspeed = 16, fullbrightEnabled = false }
 
 local wallhop = { enabled = false, angle = 90, flick = true, pushForce = 52, jumpPower = 50, interval = 0.25, lastJump = 0 }
+
 local function isTouchingWithLegs(char, root)
     local overlapParams = OverlapParams.new()
     local ignore = {char}
@@ -72,6 +153,7 @@ local function isTouchingWithLegs(char, root)
     end
     return distinct >= 2
 end
+
 game:GetService("RunService").Heartbeat:Connect(function()
     if not wallhop.enabled then return end
     local char = player.Character; if not char then return end
@@ -88,67 +170,52 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
-
 local MainTab = Window:Tab({ Title = "Main", Icon = "home" })
 
+local selectedPlayer = nil
 
-local flying = false
-local flyConnection, flyBodyVelocity, flySpeed = nil, nil, 50
-local function setCollisions(enable)
-    local char = game.Players.LocalPlayer.Character
-    if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = enable end end
-end
-local function stopFly()
-    flying = false; savedValues.flyWasOn = false
-    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
-    if flyBodyVelocity then flyBodyVelocity:Destroy(); flyBodyVelocity = nil end
-    local char = game.Players.LocalPlayer.Character
-    if char then
-        setCollisions(true)
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStand = false; hum.AutoRotate = true; hum.WalkSpeed = savedValues.walkspeed; hum.JumpPower = 50 end
+local function updatePlayerList()
+    local newList = {}
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= player then table.insert(newList, p.Name) end
     end
-end
-local function startFly()
-    local char = game.Players.LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
-    if not root then return end
-    stopFly()
-    setCollisions(false)
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then hum.PlatformStand = true; hum.AutoRotate = true; hum.WalkSpeed = 0; hum.JumpPower = 0 end
-    flyBodyVelocity = Instance.new("BodyVelocity")
-    flyBodyVelocity.Velocity = Vector3.new(0,0,0)
-    flyBodyVelocity.MaxForce = Vector3.new(1e9,1e9,1e9)
-    flyBodyVelocity.Parent = root
-    flying = true; savedValues.flyWasOn = true
-    flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not flying or not game.Players.LocalPlayer.Character or not root then stopFly(); return end
-        setCollisions(false)
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if not hum then return end
-        local uis = game:GetService("UserInputService")
-        local up = (uis:IsKeyDown(Enum.KeyCode.Space) and 2 or 0) - (uis:IsKeyDown(Enum.KeyCode.LeftControl) and 2 or 0)
-        flyBodyVelocity.Velocity = (hum.MoveDirection * flySpeed) + Vector3.new(0, up * flySpeed, 0)
-    end)
+    return newList
 end
 
-MainTab:Toggle({ Title = "Fly Mode", Desc = "Hold Space/Ctrl", Flag = "flytoggle", Callback = function(s) if s then startFly() else stopFly() end end })
-MainTab:Space({})
-MainTab:Slider({ Title = "Fly Speed", Value = { Min = 10, Max = 300, Default = 50 }, Flag = "flyspeed", Callback = function(v) flySpeed = v end })
-MainTab:Space({})
+MainTab:Dropdown({
+    Title = "Select Player",
+    Desc = "Choose a player to teleport to",
+    Values = updatePlayerList(),
+    Flag = "playerDropdown",
+    Callback = function(val)
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p.Name == val then selectedPlayer = p; break end
+        end
+    end
+})
 
+MainTab:Button({
+    Title = "Teleport to Selected Player",
+    Desc = "Moves you to that player's location",
+    Callback = function()
+        if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.CFrame = selectedPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
+            end
+        else
+            WindUI:Notify({ Title = "Error", Content = "Player not valid", Duration = 2 })
+        end
+    end
+})
+
+MainTab:Space({})
 MainTab:Slider({ Title = "Walk Speed", Value = { Min = 16, Max = 250, Default = 16 }, Flag = "walkspeed", Callback = function(v)
     savedValues.walkspeed = v
-    if not flying then
-        local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = v end
-    end
+    local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hum.WalkSpeed = v end
 end })
 MainTab:Space({})
-
 
 local lighting = game:GetService("Lighting")
 local origBright, origAmb, origOutAmb
@@ -156,7 +223,6 @@ local function enableFullbright() origBright = lighting.Brightness; origAmb = li
 local function disableFullbright() lighting.Brightness = origBright or 1; lighting.Ambient = origAmb or Color3.new(0,0,0); lighting.OutdoorAmbient = origOutAmb or Color3.new(0,0,0) end
 MainTab:Toggle({ Title = "Fullbright", Desc = "Makes dark areas visible", Flag = "fullbright", Callback = function(s) savedValues.fullbrightEnabled = s; if s then enableFullbright() else disableFullbright() end end })
 MainTab:Space({})
-
 
 local RitualTab = Window:Tab({ Title = "Ritual", Icon = "sparkles" })
 RitualTab:Space({})
@@ -202,7 +268,6 @@ RitualTab:Space({})
 RitualTab:Slider({ Title = "Fly Speed", Value = { Min = 5, Max = 50, Default = 10 }, Flag = "ritualflyspeed", Callback = function(v) ritualFlySpeed = v end })
 RitualTab:Space({})
 
-
 local ESPTab = Window:Tab({ Title = "ESP", Icon = "eye" })
 ESPTab:Space({})
 
@@ -212,117 +277,149 @@ ESPHolder.Parent = game:GetService("CoreGui")
 
 local espSettings = {
     enabled = false,
-    box = true,
-    name = true,
-    boxColor = Color3.fromRGB(0, 150, 255),
-    boxTransparency = 0.2
+    highlight = true,
+    username = true,
+    highlightColor = Color3.fromRGB(0, 150, 255),
+    highlightTransparency = 0.3
 }
 
 local function clearESP()
+    for _, child in pairs(ESPHolder:GetChildren()) do child:Destroy() end
+end
+
+local function addHighlight(part, color, transparency)
+    if not part then return end
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = part
+    highlight.FillColor = color
+    highlight.FillTransparency = transparency
+    highlight.OutlineColor = Color3.new(1,1,1)
+    highlight.OutlineTransparency = 0
+    highlight.Parent = ESPHolder
+end
+
+local function removeESPForPlayer(plrName)
     for _, child in pairs(ESPHolder:GetChildren()) do
-        child:Destroy()
+        if child.Name:find(plrName) then child:Destroy() end
     end
 end
 
 local function createESP(plr)
-    if plr == game.Players.LocalPlayer then return end
+    if plr == player then return end
     local char = plr.Character
     if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
-    if not root then return end
 
-    for _, child in pairs(ESPHolder:GetChildren()) do
-        if child.Name:find(plr.Name) then child:Destroy() end
+    removeESPForPlayer(plr.Name)
+
+    if espSettings.highlight then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                addHighlight(part, espSettings.highlightColor, espSettings.highlightTransparency)
+            end
+        end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then addHighlight(root, espSettings.highlightColor, espSettings.highlightTransparency) end
     end
 
-    if espSettings.box then
-        -- Onionware-style box: clean, white outline, no glow, no rounded corners
-        local boxGui = Instance.new("BillboardGui")
-        boxGui.Name = plr.Name .. "_Box"
-        boxGui.Adornee = root
-        boxGui.Size = UDim2.new(0, 50, 0, 70)  -- Classic box size
-        boxGui.AlwaysOnTop = true
-        boxGui.ResetOnSpawn = false
-        boxGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    if espSettings.username then
+        local head = char:FindFirstChild("Head") or char:FindFirstChild("Torso") or char:FindFirstChild("HumanoidRootPart")
+        if head then
+            local nameGui = Instance.new("BillboardGui")
+            nameGui.Name = plr.Name .. "_Name"
+            nameGui.Adornee = head
+            nameGui.Size = UDim2.new(0, 150, 0, 30)
+            nameGui.StudsOffset = Vector3.new(0, 4.5, 0)
+            nameGui.AlwaysOnTop = true
+            nameGui.ResetOnSpawn = false
 
-        local frame = Instance.new("Frame", boxGui)
-        frame.Size = UDim2.new(1, 0, 1, 0)
-        frame.BackgroundColor3 = espSettings.boxColor
-        frame.BackgroundTransparency = espSettings.boxTransparency
-        frame.BorderSizePixel = 2  -- White outline thickness
-        frame.BorderColor3 = Color3.new(1, 1, 1)  -- White
+            local nameLabel = Instance.new("TextLabel", nameGui)
+            nameLabel.Size = UDim2.new(1, 0, 1, 0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = plr.Name
+            nameLabel.TextColor3 = Color3.new(1, 1, 1)
+            nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+            nameLabel.TextStrokeTransparency = 0.3
+            nameLabel.Font = Enum.Font.GothamBold
+            nameLabel.TextSize = 16
+            nameLabel.TextScaled = false
 
-        boxGui.Parent = ESPHolder
-    end
-
-    if espSettings.name then
-        local nameGui = Instance.new("BillboardGui")
-        nameGui.Name = plr.Name .. "_Name"
-        nameGui.Adornee = root
-        nameGui.Size = UDim2.new(0, 100, 0, 20)
-        nameGui.StudsOffset = Vector3.new(0, 3.5, 0)
-        nameGui.AlwaysOnTop = true
-        nameGui.ResetOnSpawn = false
-
-        local nameLabel = Instance.new("TextLabel", nameGui)
-        nameLabel.Size = UDim2.new(1, 0, 1, 0)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = plr.DisplayName or plr.Name
-        nameLabel.TextColor3 = Color3.new(1, 1, 1)
-        nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)  -- Black outline for readability
-        nameLabel.TextStrokeTransparency = 0.3
-        nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.TextSize = 14
-        nameLabel.TextScaled = false
-
-        nameGui.Parent = ESPHolder
+            nameGui.Parent = ESPHolder
+        end
     end
 end
+
+local function setupPlayerESP(p)
+    if p == player then return end
+
+    local function onCharacterAdded(char)
+        removeESPForPlayer(p.Name)
+        task.wait(0.5)
+        if espSettings.enabled and char and char.Parent then
+            createESP(p)
+        end
+    end
+
+    local function onCharacterRemoving()
+        removeESPForPlayer(p.Name)
+    end
+
+    p.CharacterAdded:Connect(onCharacterAdded)
+
+    local function watchCurrentCharacter(char)
+        if not char then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Died:Connect(onCharacterRemoving) end
+        char.AncestryChanged:Connect(function(_, parent)
+            if not parent then onCharacterRemoving() end
+        end)
+    end
+
+    if p.Character then
+        watchCurrentCharacter(p.Character)
+        if espSettings.enabled then
+            task.wait(0.5)
+            createESP(p)
+        end
+    end
+end
+
+for _, p in pairs(game.Players:GetPlayers()) do setupPlayerESP(p) end
+game.Players.PlayerAdded:Connect(setupPlayerESP)
 
 ESPTab:Toggle({ Title = "ESP Toggle", Desc = "ESP", Flag = "esptoggle", Callback = function(s)
     espSettings.enabled = s
     if s then
+        clearESP()
         for _, p in pairs(game.Players:GetPlayers()) do
-            if p ~= game.Players.LocalPlayer then createESP(p) end
+            if p ~= player and p.Character then createESP(p) end
         end
     else clearESP() end
 end })
 ESPTab:Space({})
 
-ESPTab:Toggle({ Title = "Show Box", Desc = "Toggle box around players", Flag = "espBox", Default = true, Callback = function(s)
-    espSettings.box = s
-    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+ESPTab:Toggle({ Title = "Body Highlight", Desc = "Highlight character parts", Flag = "espHighlight", Default = true, Callback = function(s)
+    espSettings.highlight = s
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= player and p.Character then createESP(p) end end end
 end })
 ESPTab:Space({})
 
-ESPTab:Toggle({ Title = "Show Name", Desc = "Show player name", Flag = "espName", Default = true, Callback = function(s)
-    espSettings.name = s
-    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+ESPTab:Toggle({ Title = "Show Username", Desc = "Show exact username above head", Flag = "espUsername", Default = true, Callback = function(s)
+    espSettings.username = s
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= player and p.Character then createESP(p) end end end
 end })
 ESPTab:Space({})
 
-ESPTab:Colorpicker({ Title = "Box Color", Desc = "Change box color", Flag = "espColor", Default = Color3.fromRGB(0, 150, 255), Callback = function(c)
-    espSettings.boxColor = c
-    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+ESPTab:Colorpicker({ Title = "Highlight Color", Desc = "Change highlight color", Flag = "espColor", Default = Color3.fromRGB(0, 150, 255), Callback = function(c)
+    espSettings.highlightColor = c
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= player and p.Character then createESP(p) end end end
 end })
 ESPTab:Space({})
 
-ESPTab:Slider({ Title = "Box Transparency", Value = { Min = 0, Max = 1, Default = 0.2 }, Flag = "espTransparency", Callback = function(v)
-    espSettings.boxTransparency = v
-    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+ESPTab:Slider({ Title = "Highlight Transparency", Value = { Min = 0, Max = 1, Default = 0.3 }, Flag = "espTransparency", Callback = function(v)
+    espSettings.highlightTransparency = v
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= player and p.Character then createESP(p) end end end
 end })
 ESPTab:Space({})
-
-game.Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function() task.wait(1); if espSettings.enabled then createESP(p) end end)
-    if espSettings.enabled and p.Character then task.wait(1); createESP(p) end
-end)
-game.Players.PlayerRemoving:Connect(function(p)
-    for _, child in pairs(ESPHolder:GetChildren()) do
-        if child.Name:find(p.Name) then child:Destroy() end
-    end
-end)
-
 
 local UtilityTab = Window:Tab({ Title = "Utility", Icon = "terminal" })
 UtilityTab:Space({})
@@ -339,20 +436,29 @@ UtilityTab:Space({})
 UtilityTab:Button({ Title = "Open Console", Desc = "Opens Roblox developer console", Callback = function() pcall(function() game:GetService("StarterGui"):SetCore("DevConsoleVisible", true) end) end })
 UtilityTab:Space({})
 
-
 local SupportTab = Window:Tab({ Title = "Support", Icon = "heart" })
 SupportTab:Space({})
 SupportTab:Button({ Title = "Discord Invite", Desc = "Click to copy invite link", Callback = function() setclipboard("https://discord.gg/CdDUfPWQR4") end })
 SupportTab:Space({})
 local function safeAddLabel(tab, text)
     local success, err = pcall(function() tab:AddLabel({ Title = text }) end)
-    if not success then
-        tab:Button({ Title = text, Desc = "", Callback = function() end })
-    end
+    if not success then tab:Button({ Title = text, Desc = "", Callback = function() end }) end
 end
 safeAddLabel(SupportTab, "In Beta/WIP")
 SupportTab:Space({})
 
+local ChangelogTab = Window:Tab({ Title = "Changelogs", Icon = "list" })
+ChangelogTab:Space({})
+ChangelogTab:Label({ Title = "Version 3.2.1" })
+ChangelogTab:Space({})
+ChangelogTab:Label({ Title = "✓ Added Tp To Player" })
+ChangelogTab:Label({ Title = "✓ Esp Rework" })
+ChangelogTab:Label({ Title = "✓ New Changelogs tab" })
+ChangelogTab:Label({ Title = "✓ Potatoware V3.2.1" })
+ChangelogTab:Label({ Title = "✓ Removed Fly, will be reworked soon" })
+ChangelogTab:Label({ Title = "✓ Removed Jumppower" })
+ChangelogTab:Label({ Title = "✓ New ui!!! (Finally)" })
+ChangelogTab:Space({})
 
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
 SettingsTab:Space({})
@@ -364,8 +470,6 @@ SettingsTab:Button({
         if spinConnection then spinConnection:Disconnect() end
         if ritualFlyConnection then ritualFlyConnection:Disconnect() end
         if platform then platform:Destroy() end
-        if flyConnection then flyConnection:Disconnect() end
-        if flyBodyVelocity then flyBodyVelocity:Destroy() end
         clearESP()
         pcall(function() game:GetService("CoreGui"):FindFirstChild("PotatowarePremiumControls"):Destroy() end)
         Window:Destroy()
@@ -373,17 +477,22 @@ SettingsTab:Button({
 })
 SettingsTab:Space({})
 
-
 game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum and not flying then
-        hum.WalkSpeed = savedValues.walkspeed
-        hum.JumpPower = 50
-    end
-    if savedValues.flyWasOn then startFly() end
+    if hum then hum.WalkSpeed = savedValues.walkspeed end
     if savedValues.fullbrightEnabled then enableFullbright() end
 end)
 
+game.Players.PlayerAdded:Connect(function(p)
+    if p ~= player then
+        MainTab:UpdateFlag("playerDropdown", { Values = updatePlayerList() })
+    end
+end)
 
-WindUI:Notify({ Title = "Potatoware V3", Content = "Successfully Bypassed AntiCheat!", Dura
+game.Players.PlayerRemoving:Connect(function(p)
+    if p == selectedPlayer then selectedPlayer = nil end
+    MainTab:UpdateFlag("playerDropdown", { Values = updatePlayerList() })
+end)
+
+WindUI:Notify({ Title = "Potatoware V3.2.1", Content = "Successfully Bypassed AntiCheat!", Duration = 3 })
