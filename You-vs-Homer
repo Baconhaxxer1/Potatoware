@@ -5,7 +5,7 @@ repeat task.wait() until game:IsLloaded() and game.Players.LocalPlayer
 
 local player = game.Players.LocalPlayer
 
--- Original bypass
+
 pcall(function()
     local ACtable = {
         player.PlayerScripts:FindFirstChild("QuitsAntiCheatChecker"),
