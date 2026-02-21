@@ -130,17 +130,24 @@ local Window = WindUI:CreateWindow({
     },
 })
 
-local savedValues = { walkspeed = 16, fullbrightEnabled = false }
+local savedValues = {
+    walkspeed = 16,
+    fullbrightEnabled = false,
+    brightness = 2
+}
 
 local wallhop = { enabled = false, angle = 90, flick = true, pushForce = 52, jumpPower = 50, interval = 0.25, lastJump = 0 }
 
 local function isTouchingWithLegs(char, root)
+    if not char or not root then return false end
     local overlapParams = OverlapParams.new()
     local ignore = {char}
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             local n = part.Name:lower()
-            if n:find("head") or n:find("torso") or n:find("arm") or n:find("hand") then table.insert(ignore, part) end
+            if n:find("head") or n:find("torso") or n:find("arm") or n:find("hand") then
+                table.insert(ignore, part)
+            end
         end
     end
     overlapParams.FilterDescendantsInstances = ignore
@@ -149,23 +156,30 @@ local function isTouchingWithLegs(char, root)
     local distinct = 0
     local checked = {}
     for _, p in pairs(hits) do
-        if p.CanCollide and not checked[p] then checked[p] = true; distinct = distinct + 1 end
+        if p.CanCollide and not checked[p] then
+            checked[p] = true
+            distinct = distinct + 1
+        end
     end
     return distinct >= 2
 end
 
 game:GetService("RunService").Heartbeat:Connect(function()
     if not wallhop.enabled then return end
-    local char = player.Character; if not char then return end
+    local char = player.Character
+    if not char then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local root = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
     if not root or not hum then return end
-    hum.UseJumpPower = true; hum.JumpPower = wallhop.jumpPower
+    hum.UseJumpPower = true
+    hum.JumpPower = wallhop.jumpPower
     if hum.Jump == true and tick() - wallhop.lastJump >= wallhop.interval then
         if isTouchingWithLegs(char, root) then
             wallhop.lastJump = tick()
             root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, wallhop.pushForce, root.AssemblyLinearVelocity.Z)
-            if wallhop.flick then root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(wallhop.angle), 0) end
+            if wallhop.flick then
+                root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(wallhop.angle), 0)
+            end
         end
     end
 end)
@@ -219,9 +233,39 @@ MainTab:Space({})
 
 local lighting = game:GetService("Lighting")
 local origBright, origAmb, origOutAmb
-local function enableFullbright() origBright = lighting.Brightness; origAmb = lighting.Ambient; origOutAmb = lighting.OutdoorAmbient; lighting.Brightness = 2; lighting.Ambient = Color3.new(1,1,1); lighting.OutdoorAmbient = Color3.new(1,1,1) end
-local function disableFullbright() lighting.Brightness = origBright or 1; lighting.Ambient = origAmb or Color3.new(0,0,0); lighting.OutdoorAmbient = origOutAmb or Color3.new(0,0,0) end
-MainTab:Toggle({ Title = "Fullbright", Desc = "Makes dark areas visible", Flag = "fullbright", Callback = function(s) savedValues.fullbrightEnabled = s; if s then enableFullbright() else disableFullbright() end end })
+
+local function applyFullbright()
+    lighting.Brightness = savedValues.brightness
+    lighting.Ambient = Color3.new(1,1,1)
+    lighting.OutdoorAmbient = Color3.new(1,1,1)
+end
+
+local function enableFullbright()
+    origBright = lighting.Brightness
+    origAmb = lighting.Ambient
+    origOutAmb = lighting.OutdoorAmbient
+    applyFullbright()
+end
+
+local function disableFullbright()
+    lighting.Brightness = origBright or 1
+    lighting.Ambient = origAmb or Color3.new(0,0,0)
+    lighting.OutdoorAmbient = origOutAmb or Color3.new(0,0,0)
+end
+
+MainTab:Toggle({ Title = "Fullbright", Desc = "Makes dark areas visible", Flag = "fullbright", Callback = function(s)
+    savedValues.fullbrightEnabled = s
+    if s then enableFullbright() else disableFullbright() end
+end })
+
+MainTab:Space({})
+
+MainTab:Slider({ Title = "Brightness", Desc = "Adjust fullbright intensity", Value = { Min = 0, Max = 5, Default = 2 }, Flag = "brightness", Callback = function(v)
+    savedValues.brightness = v
+    if savedValues.fullbrightEnabled then
+        applyFullbright()
+    end
+end })
 MainTab:Space({})
 
 local RitualTab = Window:Tab({ Title = "Ritual", Icon = "sparkles" })
@@ -363,24 +407,22 @@ local function setupPlayerESP(p)
         removeESPForPlayer(p.Name)
     end
 
-    p.CharacterAdded:Connect(onCharacterAdded)
-
-    local function watchCurrentCharacter(char)
-        if not char then return end
+    if p.Character then
+        local char = p.Character
         local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.Died:Connect(onCharacterRemoving) end
+        if hum then
+            hum.Died:Connect(onCharacterRemoving)
+        end
         char.AncestryChanged:Connect(function(_, parent)
             if not parent then onCharacterRemoving() end
         end)
-    end
-
-    if p.Character then
-        watchCurrentCharacter(p.Character)
         if espSettings.enabled then
             task.wait(0.5)
             createESP(p)
         end
     end
+
+    p.CharacterAdded:Connect(onCharacterAdded)
 end
 
 for _, p in pairs(game.Players:GetPlayers()) do setupPlayerESP(p) end
@@ -394,18 +436,6 @@ ESPTab:Toggle({ Title = "ESP Toggle", Desc = "ESP", Flag = "esptoggle", Callback
             if p ~= player and p.Character then createESP(p) end
         end
     else clearESP() end
-end })
-ESPTab:Space({})
-
-ESPTab:Toggle({ Title = "Body Highlight", Desc = "Highlight character parts", Flag = "espHighlight", Default = true, Callback = function(s)
-    espSettings.highlight = s
-    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= player and p.Character then createESP(p) end end end
-end })
-ESPTab:Space({})
-
-ESPTab:Toggle({ Title = "Show Username", Desc = "Show exact username above head", Flag = "espUsername", Default = true, Callback = function(s)
-    espSettings.username = s
-    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= player and p.Character then createESP(p) end end end
 end })
 ESPTab:Space({})
 
@@ -440,27 +470,396 @@ local SupportTab = Window:Tab({ Title = "Support", Icon = "heart" })
 SupportTab:Space({})
 SupportTab:Button({ Title = "Discord Invite", Desc = "Click to copy invite link", Callback = function() setclipboard("https://discord.gg/CdDUfPWQR4") end })
 SupportTab:Space({})
-local function safeAddLabel(tab, text)
-    local success, err = pcall(function() tab:AddLabel({ Title = text }) end)
-    if not success then tab:Button({ Title = text, Desc = "", Callback = function() end }) end
+
+local function safeLabel(tab, text)
+    local success, err = pcall(function() tab:Label({ Title = text }) end)
+    if not success then
+        success, err = pcall(function() tab:AddLabel({ Title = text }) end)
+        if not success then
+            tab:Button({ Title = text, Desc = "", Callback = function() end })
+        end
+    end
 end
-safeAddLabel(SupportTab, "In Beta/WIP")
-SupportTab:Space({})
+
+local KeybindsTab = Window:Tab({ Title = "Keybinds", Icon = "keyboard" })
+KeybindsTab:Space({})
+safeLabel(KeybindsTab, "PC Keybinds")
+KeybindsTab:Space({})
+safeLabel(KeybindsTab, "Right Ctrl: Toggle ESP")
+safeLabel(KeybindsTab, "Right Shift: Toggle Fullbright")
+safeLabel(KeybindsTab, "Right Alt: Toggle Wallhop")
+safeLabel(KeybindsTab, "Insert: Toggle Optimize")
+KeybindsTab:Space({})
+safeLabel(KeybindsTab, "(Hold key to toggle)")
+KeybindsTab:Space({})
+
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        espSettings.enabled = not espSettings.enabled
+        if espSettings.enabled then
+            clearESP()
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= player and p.Character then createESP(p) end
+            end
+            WindUI:Notify({ Title = "Keybind", Content = "ESP Enabled", Duration = 1 })
+        else
+            clearESP()
+            WindUI:Notify({ Title = "Keybind", Content = "ESP Disabled", Duration = 1 })
+        end
+    elseif input.KeyCode == Enum.KeyCode.RightShift then
+        savedValues.fullbrightEnabled = not savedValues.fullbrightEnabled
+        if savedValues.fullbrightEnabled then enableFullbright() else disableFullbright() end
+        WindUI:Notify({ Title = "Keybind", Content = "Fullbright Toggled", Duration = 1 })
+    elseif input.KeyCode == Enum.KeyCode.RightAlt then
+        wallhop.enabled = not wallhop.enabled
+        if wallhop.enabled then wallhop.jumpPower = 50 end
+        WindUI:Notify({ Title = "Keybind", Content = "Wallhop Toggled", Duration = 1 })
+    elseif input.KeyCode == Enum.KeyCode.Insert then
+        local function optimizeGame()
+            setfpscap(999999999)
+            for _,v in next,game:GetService("Workspace"):GetDescendants() do
+                if v and v:IsA("Model") then
+                    v.LevelOfDetail = "Disabled"
+                    v.ModelStreamingMode = "Nonatomic"
+                elseif v and (v:IsA("BasePart") and not v:IsA("MeshPart")) then
+                    v.CastShadow = false
+                    v.Material = "Plastic"
+                    v.Reflectance = 0 
+                    v.MaterialVariant = ""
+                elseif v and (v:IsA("Decal") or v:IsA("Texture")) then 
+                    v.Transparency = 1
+                elseif v and v:IsA("MeshPart") then 
+                    v.CastShadow = false
+                    v.DoubleSided = false
+                    v.RenderFidelity = "Performance"
+                    v.TextureID = 10385902758728957
+                elseif v and v:IsA("SpecialMesh") then 
+                    v.TextureId = 0
+                elseif v and v:IsA("ShirtGraphic") then 
+                    v.Graphic = 0
+                elseif v and (v:IsA("Shirt") or v:IsA("Pants")) then 
+                    v[v.ClassName.."Template"] = 0
+                elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                    v.Enabled = false   
+                elseif v:IsA("Explosion") then
+                    v.BlastPressure = 1
+                    v.BlastRadius = 1
+                elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                    v.Enabled = false
+                elseif v and v:IsA("Beam") then 
+                    v.Enabled = false
+                elseif v and v:IsA("SurfaceAppearance") then
+                    v:Destroy()
+                elseif v and v:IsA("Debris") then 
+                    v:Destroy()
+                elseif v and v:IsA("Attachment") then 
+                    v.Visible = false
+                elseif v and v:IsA("MaterialVariant") then 
+                    v:Destroy()
+                end
+            end
+            for _,v in next,game:GetService("Lighting"):GetDescendants() do 
+                if v and (v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("Clouds") or v:IsA("PostEffect") or v:IsA("ColorCorrectionEffect")) then 
+                    v:Destroy()
+                end
+            end
+            sethiddenproperty(game:GetService("Lighting"),"Technology",2)
+            game:GetService("Lighting").GlobalShadows = false
+            game:GetService("Lighting").FogEnd = 9e9
+            game:GetService("Lighting").Brightness = 0
+            sethiddenproperty(game:GetService("Workspace"):FindFirstChildOfClass("Terrain"),"Decoration",false)
+            game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterReflectance = 0 
+            game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterTransparency = 0.7
+            game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterWaveSize = 0
+            game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterWaveSpeed = 0
+            game:GetService("Lighting").ChildAdded:Connect(function(addedshit)
+                spawn(function() addedshit:Destroy() end)
+            end)
+            game:GetService("Workspace").DescendantAdded:Connect(function(addedshit)
+                spawn(function()
+                    if addedshit:IsA("Model") then
+                        addedshit.LevelOfDetail = "Disabled"
+                        addedshit.ModelStreamingMode = "Nonatomic"
+                    elseif (addedshit:IsA("BasePart") and not addedshit:IsA("MeshPart")) then
+                        addedshit.CastShadow = false
+                        addedshit.Material = "Plastic"
+                        addedshit.Reflectance = 0 
+                        addedshit.MaterialVariant = ""
+                    elseif (addedshit:IsA("Decal") or addedshit:IsA("Texture")) then 
+                        addedshit.Transparency = 1
+                    elseif addedshit:IsA("MeshPart") then 
+                        addedshit.CastShadow = false
+                        addedshit.DoubleSided = false
+                        addedshit.RenderFidelity = "Performance"
+                        addedshit.TextureID = 10385902758728957
+                    elseif addedshit:IsA("SpecialMesh") then 
+                        addedshit.TextureId = 0
+                    elseif addedshit:IsA("ShirtGraphic") then 
+                        addedshit.Graphic = 0
+                    elseif (addedshit:IsA("Shirt") or addedshit:IsA("Pants")) then 
+                        addedshit[addedshit.ClassName.."Template"] = 0
+                    elseif addedshit:IsA("Fire") or addedshit:IsA("SpotLight") or addedshit:IsA("Smoke") or addedshit:IsA("Sparkles") then
+                        addedshit.Enabled = false   
+                    elseif addedshit:IsA("Explosion") then
+                        addedshit.BlastPressure = 1
+                        addedshit.BlastRadius = 1
+                    elseif addedshit:IsA("ParticleEmitter") or addedshit:IsA("Trail") then
+                        addedshit.Enabled = false
+                    elseif addedshit:IsA("Beam") then 
+                        addedshit.Enabled = false
+                    elseif addedshit:IsA("SurfaceAppearance") then
+                        addedshit:Destroy()
+                    elseif addedshit:IsA("Debris") then 
+                        addedshit:Destroy()
+                    elseif addedshit:IsA("Attachment") then 
+                        addedshit.Visible = false
+                    elseif addedshit:IsA("MaterialVariant") then 
+                        addedshit:Destroy()
+                    end
+                end)
+            end)
+            WindUI:Notify({ Title = "Optimize", Content = "Game optimized", Duration = 2 })
+        end
+        optimizeGame()
+        WindUI:Notify({ Title = "Keybind", Content = "Optimize applied", Duration = 1 })
+    end
+end)
 
 local ChangelogTab = Window:Tab({ Title = "Changelogs", Icon = "list" })
 ChangelogTab:Space({})
-ChangelogTab:Label({ Title = "Version 3.2.1" })
+safeLabel(ChangelogTab, "Version 3.2.1")
 ChangelogTab:Space({})
-ChangelogTab:Label({ Title = "✓ Added Tp To Player" })
-ChangelogTab:Label({ Title = "✓ Esp Rework" })
-ChangelogTab:Label({ Title = "✓ New Changelogs tab" })
-ChangelogTab:Label({ Title = "✓ Potatoware V3.2.1" })
-ChangelogTab:Label({ Title = "✓ Removed Fly, will be reworked soon" })
-ChangelogTab:Label({ Title = "✓ Removed Jumppower" })
-ChangelogTab:Label({ Title = "✓ New ui!!! (Finally)" })
+safeLabel(ChangelogTab, "✓ Added Tp To Player")
+safeLabel(ChangelogTab, "✓ Esp Rework")
+safeLabel(ChangelogTab, "✓ New Changelogs tab")
+safeLabel(ChangelogTab, "✓ Potatoware V3.2.1")
+safeLabel(ChangelogTab, "✓ Removed Fly, will be reworked soon")
+safeLabel(ChangelogTab, "✓ Removed Jumppower")
+safeLabel(ChangelogTab, "✓ New ui!!! (Finally)")
+safeLabel(ChangelogTab, "✓ Added Shaders And Low quality mode")
+safeLabel(ChangelogTab, "✓ Bear Alpha Support Soon.")
 ChangelogTab:Space({})
 
 local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
+SettingsTab:Space({})
+
+SettingsTab:Colorpicker({
+    Title = "Theme Color",
+    Desc = "Change the main UI color",
+    Default = Color3.fromRGB(181,1,31),
+    Callback = function(color)
+        local mainFrame = Window._frame or Window._mainFrame
+        if mainFrame then
+            for _, v in pairs(mainFrame:GetDescendants()) do
+                if v:IsA("Frame") and v.BackgroundColor3 == Color3.fromRGB(181,1,31) then
+                    v.BackgroundColor3 = color
+                end
+                if v:IsA("TextButton") and v.BackgroundColor3 == Color3.fromRGB(181,1,31) then
+                    v.BackgroundColor3 = color
+                end
+            end
+        end
+    end
+})
+SettingsTab:Space({})
+
+SettingsTab:Button({
+    Title = "Optimize Game",
+    Desc = "Reduce graphics for better performance",
+    Callback = function()
+        setfpscap(999999999)
+        for _,v in next,game:GetService("Workspace"):GetDescendants() do
+            if v and v:IsA("Model") then
+                v.LevelOfDetail = "Disabled"
+                v.ModelStreamingMode = "Nonatomic"
+            elseif v and (v:IsA("BasePart") and not v:IsA("MeshPart")) then
+                v.CastShadow = false
+                v.Material = "Plastic"
+                v.Reflectance = 0 
+                v.MaterialVariant = ""
+            elseif v and (v:IsA("Decal") or v:IsA("Texture")) then 
+                v.Transparency = 1
+            elseif v and v:IsA("MeshPart") then 
+                v.CastShadow = false
+                v.DoubleSided = false
+                v.RenderFidelity = "Performance"
+                v.TextureID = 10385902758728957
+            elseif v and v:IsA("SpecialMesh") then 
+                v.TextureId = 0
+            elseif v and v:IsA("ShirtGraphic") then 
+                v.Graphic = 0
+            elseif v and (v:IsA("Shirt") or v:IsA("Pants")) then 
+                v[v.ClassName.."Template"] = 0
+            elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                v.Enabled = false   
+            elseif v:IsA("Explosion") then
+                v.BlastPressure = 1
+                v.BlastRadius = 1
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                v.Enabled = false
+            elseif v and v:IsA("Beam") then 
+                v.Enabled = false
+            elseif v and v:IsA("SurfaceAppearance") then
+                v:Destroy()
+            elseif v and v:IsA("Debris") then 
+                v:Destroy()
+            elseif v and v:IsA("Attachment") then 
+                v.Visible = false
+            elseif v and v:IsA("MaterialVariant") then 
+                v:Destroy()
+            end
+        end
+        for _,v in next,game:GetService("Lighting"):GetDescendants() do 
+            if v and (v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("SunRaysEffect") or v:IsA("DepthOfFieldEffect") or v:IsA("Clouds") or v:IsA("PostEffect") or v:IsA("ColorCorrectionEffect")) then 
+                v:Destroy()
+            end
+        end
+        sethiddenproperty(game:GetService("Lighting"),"Technology",2)
+        game:GetService("Lighting").GlobalShadows = false
+        game:GetService("Lighting").FogEnd = 9e9
+        game:GetService("Lighting").Brightness = 0
+        sethiddenproperty(game:GetService("Workspace"):FindFirstChildOfClass("Terrain"),"Decoration",false)
+        game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterReflectance = 0 
+        game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterTransparency = 0.7
+        game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterWaveSize = 0
+        game:GetService("Workspace"):FindFirstChildOfClass("Terrain").WaterWaveSpeed = 0
+        game:GetService("Lighting").ChildAdded:Connect(function(addedshit)
+            spawn(function() addedshit:Destroy() end)
+        end)
+        game:GetService("Workspace").DescendantAdded:Connect(function(addedshit)
+            spawn(function()
+                if addedshit:IsA("Model") then
+                    addedshit.LevelOfDetail = "Disabled"
+                    addedshit.ModelStreamingMode = "Nonatomic"
+                elseif (addedshit:IsA("BasePart") and not addedshit:IsA("MeshPart")) then
+                    addedshit.CastShadow = false
+                    addedshit.Material = "Plastic"
+                    addedshit.Reflectance = 0 
+                    addedshit.MaterialVariant = ""
+                elseif (addedshit:IsA("Decal") or addedshit:IsA("Texture")) then 
+                    addedshit.Transparency = 1
+                elseif addedshit:IsA("MeshPart") then 
+                    addedshit.CastShadow = false
+                    addedshit.DoubleSided = false
+                    addedshit.RenderFidelity = "Performance"
+                    addedshit.TextureID = 10385902758728957
+                elseif addedshit:IsA("SpecialMesh") then 
+                    addedshit.TextureId = 0
+                elseif addedshit:IsA("ShirtGraphic") then 
+                    addedshit.Graphic = 0
+                elseif (addedshit:IsA("Shirt") or addedshit:IsA("Pants")) then 
+                    addedshit[addedshit.ClassName.."Template"] = 0
+                elseif addedshit:IsA("Fire") or addedshit:IsA("SpotLight") or addedshit:IsA("Smoke") or addedshit:IsA("Sparkles") then
+                    addedshit.Enabled = false   
+                elseif addedshit:IsA("Explosion") then
+                    addedshit.BlastPressure = 1
+                    addedshit.BlastRadius = 1
+                elseif addedshit:IsA("ParticleEmitter") or addedshit:IsA("Trail") then
+                    addedshit.Enabled = false
+                elseif addedshit:IsA("Beam") then 
+                    addedshit.Enabled = false
+                elseif addedshit:IsA("SurfaceAppearance") then
+                    addedshit:Destroy()
+                elseif addedshit:IsA("Debris") then 
+                    addedshit:Destroy()
+                elseif addedshit:IsA("Attachment") then 
+                    addedshit.Visible = false
+                elseif addedshit:IsA("MaterialVariant") then 
+                    addedshit:Destroy()
+                end
+            end)
+        end)
+        WindUI:Notify({ Title = "Optimize", Content = "Game optimized for performance", Duration = 2 })
+    end
+})
+SettingsTab:Space({})
+
+local shadersEnabled = false
+local originalLighting = {}
+local function saveOriginalLighting()
+    originalLighting.Technology = lighting.Technology
+    originalLighting.ShadowSoftness = lighting.ShadowSoftness
+    originalLighting.ClockTime = lighting.ClockTime
+    originalLighting.GeographicLatitude = lighting.GeographicLatitude
+    originalLighting.Brightness = lighting.Brightness
+    originalLighting.Ambient = lighting.Ambient
+    originalLighting.ColorShift_Top = lighting.ColorShift_Top
+    originalLighting.ColorShift_Bottom = lighting.ColorShift_Bottom
+    originalLighting.OutdoorAmbient = lighting.OutdoorAmbient
+    originalLighting.GlobalShadows = lighting.GlobalShadows
+    originalLighting.EnvironmentDiffuseScale = lighting.EnvironmentDiffuseScale
+    originalLighting.EnvironmentSpecularScale = lighting.EnvironmentSpecularScale
+    originalLighting.ExposureCompensation = lighting.ExposureCompensation
+end
+
+local function enableShaders()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level21
+    lighting.Technology = Enum.Technology.ShadowMap
+    lighting.ShadowSoftness = 0.15
+    lighting.ClockTime = 9
+    lighting.GeographicLatitude = 41.73
+    lighting.Brightness = 5
+    lighting.Ambient = Color3.fromRGB(70, 70, 70)
+    lighting.ColorShift_Top = Color3.fromRGB(255, 138, 35)
+    lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
+    lighting.OutdoorAmbient = Color3.fromRGB(135, 135, 135)
+    lighting.GlobalShadows = true
+    lighting.EnvironmentDiffuseScale = 1
+    lighting.EnvironmentSpecularScale = 1
+    lighting.ExposureCompensation = 0
+    workspace.Terrain.WaterReflectance = 0.08
+    workspace.Terrain.WaterTransparency = 0.85
+    workspace.Terrain.WaterWaveSize = 0.15
+    workspace.Terrain.WaterWaveSpeed = 12
+    workspace.Terrain.WaterColor = Color3.fromRGB(12, 84, 92)
+    local sky = Instance.new("Sky", lighting)
+    sky.SkyboxBk = "rbxassetid://271042516"
+    sky.SkyboxDn = "rbxassetid://271077243"
+    sky.SkyboxFt = "rbxassetid://271042556"
+    sky.SkyboxLf = "rbxassetid://271042310"
+    sky.SkyboxRt = "rbxassetid://271042467"
+    sky.SkyboxUp = "rbxassetid://271077958"
+end
+
+local function disableShaders()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level00
+    lighting.Technology = originalLighting.Technology or Enum.Technology.ShadowMap
+    lighting.ShadowSoftness = originalLighting.ShadowSoftness or 0.1
+    lighting.ClockTime = originalLighting.ClockTime or 12
+    lighting.GeographicLatitude = originalLighting.GeographicLatitude or 41.73
+    lighting.Brightness = originalLighting.Brightness or 1
+    lighting.Ambient = originalLighting.Ambient or Color3.new(0,0,0)
+    lighting.ColorShift_Top = originalLighting.ColorShift_Top or Color3.new(1,1,1)
+    lighting.ColorShift_Bottom = originalLighting.ColorShift_Bottom or Color3.new(0,0,0)
+    lighting.OutdoorAmbient = originalLighting.OutdoorAmbient or Color3.new(0.5,0.5,0.5)
+    lighting.GlobalShadows = originalLighting.GlobalShadows or true
+    lighting.EnvironmentDiffuseScale = originalLighting.EnvironmentDiffuseScale or 1
+    lighting.EnvironmentSpecularScale = originalLighting.EnvironmentSpecularScale or 1
+    lighting.ExposureCompensation = originalLighting.ExposureCompensation or 0
+    workspace.Terrain.WaterReflectance = 0.05
+    workspace.Terrain.WaterTransparency = 0.8
+    workspace.Terrain.WaterWaveSize = 0.1
+    workspace.Terrain.WaterWaveSpeed = 10
+    workspace.Terrain.WaterColor = Color3.fromRGB(14, 119, 148)
+    for _, v in pairs(lighting:GetChildren()) do if v:IsA("Sky") then v:Destroy() end end
+end
+
+SettingsTab:Toggle({
+    Title = "Shaders",
+    Desc = "Enable high-quality visuals",
+    Flag = "shaders",
+    Default = false,
+    Callback = function(state)
+        if state then
+            saveOriginalLighting()
+            enableShaders()
+        else
+            disableShaders()
+        end
+    end
+})
 SettingsTab:Space({})
 
 SettingsTab:Button({
@@ -486,13 +885,13 @@ end)
 
 game.Players.PlayerAdded:Connect(function(p)
     if p ~= player then
-        MainTab:UpdateFlag("playerDropdown", { Values = updatePlayerList() })
+        pcall(function() MainTab:UpdateFlag("playerDropdown", { Values = updatePlayerList() }) end)
     end
 end)
 
 game.Players.PlayerRemoving:Connect(function(p)
     if p == selectedPlayer then selectedPlayer = nil end
-    MainTab:UpdateFlag("playerDropdown", { Values = updatePlayerList() })
+    pcall(function() MainTab:UpdateFlag("playerDropdown", { Values = updatePlayerList() }) end)
 end)
 
 WindUI:Notify({ Title = "Potatoware V3.2.1", Content = "Successfully Bypassed AntiCheat!", Duration = 3 })
