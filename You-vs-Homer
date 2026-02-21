@@ -1,8 +1,8 @@
--- 
+
 
 repeat task.wait() until game:IsLloaded() and game.Players.LocalPlayer
 
--- ========== ANTICHEAT REMOVAL (ORIGINAL + ZINS) ==========
+
 local player = game.Players.LocalPlayer
 
 -- Original bypass
@@ -24,7 +24,7 @@ coroutine.wrap(function()
     end
 end)()
 
--- Zins bypass (You VS Homer specific)
+
 pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/zinsos/luau/refs/heads/main/YouVsHomerBypass"))()
 end)
@@ -92,7 +92,7 @@ end)
 
 local MainTab = Window:Tab({ Title = "Main", Icon = "home" })
 
--- Fly mode
+
 local flying = false
 local flyConnection, flyBodyVelocity, flySpeed = nil, nil, 50
 local function setCollisions(enable)
@@ -150,7 +150,7 @@ MainTab:Slider({ Title = "Walk Speed", Value = { Min = 16, Max = 250, Default = 
 end })
 MainTab:Space({})
 
--- Fullbright
+
 local lighting = game:GetService("Lighting")
 local origBright, origAmb, origOutAmb
 local function enableFullbright() origBright = lighting.Brightness; origAmb = lighting.Ambient; origOutAmb = lighting.OutdoorAmbient; lighting.Brightness = 2; lighting.Ambient = Color3.new(1,1,1); lighting.OutdoorAmbient = Color3.new(1,1,1) end
