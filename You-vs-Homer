@@ -1,6 +1,6 @@
 
 
-repeat task.wait() until game:IsLloaded() and game.Players.LocalPlayer
+repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
 
 
 local player = game.Players.LocalPlayer
@@ -23,7 +23,6 @@ coroutine.wrap(function()
         for i,v in pairs(getconnections(game:GetService("ScriptContext").Error)) do v:Disconnect() end
     end
 end)()
-
 
 pcall(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/zinsos/luau/refs/heads/main/YouVsHomerBypass"))()
@@ -49,7 +48,7 @@ local Window = WindUI:CreateWindow({
     },
 })
 
-
+-- Saved values
 local savedValues = { walkspeed = 16, flyWasOn = false, fullbrightEnabled = false }
 
 
@@ -158,6 +157,7 @@ local function disableFullbright() lighting.Brightness = origBright or 1; lighti
 MainTab:Toggle({ Title = "Fullbright", Desc = "Makes dark areas visible", Flag = "fullbright", Callback = function(s) savedValues.fullbrightEnabled = s; if s then enableFullbright() else disableFullbright() end end })
 MainTab:Space({})
 
+
 local RitualTab = Window:Tab({ Title = "Ritual", Icon = "sparkles" })
 RitualTab:Space({})
 local spinConnection, spinSpeed = nil, 90
@@ -236,7 +236,7 @@ local function createESP(plr)
     end
 
     if espSettings.box then
-        
+        -- Onionware-style box: clean, white outline, no glow, no rounded corners
         local boxGui = Instance.new("BillboardGui")
         boxGui.Name = plr.Name .. "_Box"
         boxGui.Adornee = root
@@ -385,6 +385,5 @@ game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
     if savedValues.fullbrightEnabled then enableFullbright() end
 end)
 
--- ========== FINISH ==========
-WindUI:Notify({ Title = "Potatoware V3", Content = "Successfully Bypassed Ant
-repeat
+
+WindUI:Notify({ Title = "Potatoware V3", Content = "Successfully Bypassed AntiCheat!", Dura
