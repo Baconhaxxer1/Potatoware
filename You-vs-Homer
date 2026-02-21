@@ -1,341 +1,390 @@
-repeat task.wait() until game:IsLoaded() and game.Players.LocalPlayer
+-- 
 
+repeat task.wait() until game:IsLloaded() and game.Players.LocalPlayer
 
-for i,v in pairs(getconnections(game:GetService("ScriptContext").Error)) do
-    v:Disconnect()
-end
+-- ========== ANTICHEAT REMOVAL (ORIGINAL + ZINS) ==========
+local player = game.Players.LocalPlayer
+
+-- Original bypass
+pcall(function()
+    local ACtable = {
+        player.PlayerScripts:FindFirstChild("QuitsAntiCheatChecker"),
+        player.PlayerScripts:FindFirstChild("QuitsAntiCheatLocal"),
+        game:GetService("StarterPlayer").StarterPlayerScripts:FindFirstChild("QuitsAntiCheatChecker"),
+        game:GetService("StarterPlayer").StarterPlayerScripts:FindFirstChild("QuitsAntiCheatLocal"),
+    }
+    for _, v in ipairs(ACtable) do if v then v:Destroy() end end
+end)
+
+-- Disconnect ScriptContext.Error
+for i,v in pairs(getconnections(game:GetService("ScriptContext").Error)) do v:Disconnect() end
 coroutine.wrap(function()
     while task.wait(1) do
-        for i,v in pairs(getconnections(game:GetService("ScriptContext").Error)) do
-            v:Disconnect()
-        end
+        for i,v in pairs(getconnections(game:GetService("ScriptContext").Error)) do v:Disconnect() end
     end
 end)()
 
+-- Zins bypass (You VS Homer specific)
+pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/zinsos/luau/refs/heads/main/YouVsHomerBypass"))()
+end)
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/orialdev/WindUI-Boreal/refs/heads/main/WindUI%20Boreal"))()
 setclipboard("https://discord.gg/CdDUfPWQR4")
 
 
-local Window = Rayfield:CreateWindow({
-    Name = "Potatoware V2",
-    Icon = 0,
-    LoadingTitle = "Potatoware",
-    LoadingSubtitle = "Made by Baconhaxxer1",  
-    ShowText = "Potatoware",
-    Theme = "Default",
-    ToggleUIKeybind = "K",
-    DisableRayfieldPrompts = false,
-    DisableBuildWarnings = false,
-    ConfigurationSaving = {
+local Window = WindUI:CreateWindow({
+    Title = "Potatoware V3",
+    Author = "Made by Baconhaxxer1",
+    Size = UDim2.fromOffset(680, 520),
+    Icon = "sparkles",
+    ModernLayout = true,
+    Watermark = {
         Enabled = true,
-        FolderName = "Potatoware",
-        FileName = "Settings"
+        Text = "Potatoware V3 | Baconhaxxer1",
+        Position = "bottom-right",
+        Size = 14,
+        Padding = 12,
     },
-    Discord = { Enabled = false },
-    KeySystem = false
 })
 
--- Store current slider values for respawn
-local savedValues = {
-    walkspeed = 16,
-    jumppower = 50
-}
+
+local savedValues = { walkspeed = 16, flyWasOn = false, fullbrightEnabled = false }
 
 
-local MainTab = Window:CreateTab("Main", "home")
-
-MainTab:CreateSlider({
-    Name = "Walk Speed",
-    Range = {16, 250},
-    Increment = 1,
-    CurrentValue = 16,
-    Flag = "walkspeed",
-    Callback = function(v)
-        savedValues.walkspeed = v
-        local char = game.Players.LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = v end
+local wallhop = { enabled = false, angle = 90, flick = true, pushForce = 52, jumpPower = 50, interval = 0.25, lastJump = 0 }
+local function isTouchingWithLegs(char, root)
+    local overlapParams = OverlapParams.new()
+    local ignore = {char}
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            local n = part.Name:lower()
+            if n:find("head") or n:find("torso") or n:find("arm") or n:find("hand") then table.insert(ignore, part) end
         end
     end
-})
-
-MainTab:CreateSlider({
-    Name = "Jump Power",
-    Range = {50, 250},
-    Increment = 1,
-    CurrentValue = 50,
-    Flag = "jumppower",
-    Callback = function(v)
-        savedValues.jumppower = v
-        local char = game.Players.LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if hum then hum.JumpPower = v end
+    overlapParams.FilterDescendantsInstances = ignore
+    overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+    local hits = workspace:GetPartBoundsInBox(root.CFrame, Vector3.new(3, 4, 3), overlapParams)
+    local distinct = 0
+    local checked = {}
+    for _, p in pairs(hits) do
+        if p.CanCollide and not checked[p] then checked[p] = true; distinct = distinct + 1 end
+    end
+    return distinct >= 2
+end
+game:GetService("RunService").Heartbeat:Connect(function()
+    if not wallhop.enabled then return end
+    local char = player.Character; if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+    if not root or not hum then return end
+    hum.UseJumpPower = true; hum.JumpPower = wallhop.jumpPower
+    if hum.Jump == true and tick() - wallhop.lastJump >= wallhop.interval then
+        if isTouchingWithLegs(char, root) then
+            wallhop.lastJump = tick()
+            root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, wallhop.pushForce, root.AssemblyLinearVelocity.Z)
+            if wallhop.flick then root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(wallhop.angle), 0) end
         end
     end
-})
+end)
 
--- Fullbright toggle
+
+local MainTab = Window:Tab({ Title = "Main", Icon = "home" })
+
+-- Fly mode
+local flying = false
+local flyConnection, flyBodyVelocity, flySpeed = nil, nil, 50
+local function setCollisions(enable)
+    local char = game.Players.LocalPlayer.Character
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do if part:IsA("BasePart") then part.CanCollide = enable end end
+end
+local function stopFly()
+    flying = false; savedValues.flyWasOn = false
+    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+    if flyBodyVelocity then flyBodyVelocity:Destroy(); flyBodyVelocity = nil end
+    local char = game.Players.LocalPlayer.Character
+    if char then
+        setCollisions(true)
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.PlatformStand = false; hum.AutoRotate = true; hum.WalkSpeed = savedValues.walkspeed; hum.JumpPower = 50 end
+    end
+end
+local function startFly()
+    local char = game.Players.LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+    if not root then return end
+    stopFly()
+    setCollisions(false)
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then hum.PlatformStand = true; hum.AutoRotate = true; hum.WalkSpeed = 0; hum.JumpPower = 0 end
+    flyBodyVelocity = Instance.new("BodyVelocity")
+    flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+    flyBodyVelocity.MaxForce = Vector3.new(1e9,1e9,1e9)
+    flyBodyVelocity.Parent = root
+    flying = true; savedValues.flyWasOn = true
+    flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not flying or not game.Players.LocalPlayer.Character or not root then stopFly(); return end
+        setCollisions(false)
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        local uis = game:GetService("UserInputService")
+        local up = (uis:IsKeyDown(Enum.KeyCode.Space) and 2 or 0) - (uis:IsKeyDown(Enum.KeyCode.LeftControl) and 2 or 0)
+        flyBodyVelocity.Velocity = (hum.MoveDirection * flySpeed) + Vector3.new(0, up * flySpeed, 0)
+    end)
+end
+
+MainTab:Toggle({ Title = "Fly Mode", Desc = "Hold Space/Ctrl", Flag = "flytoggle", Callback = function(s) if s then startFly() else stopFly() end end })
+MainTab:Space({})
+MainTab:Slider({ Title = "Fly Speed", Value = { Min = 10, Max = 300, Default = 50 }, Flag = "flyspeed", Callback = function(v) flySpeed = v end })
+MainTab:Space({})
+
+MainTab:Slider({ Title = "Walk Speed", Value = { Min = 16, Max = 250, Default = 16 }, Flag = "walkspeed", Callback = function(v)
+    savedValues.walkspeed = v
+    if not flying then
+        local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = v end
+    end
+end })
+MainTab:Space({})
+
+-- Fullbright
 local lighting = game:GetService("Lighting")
 local origBright, origAmb, origOutAmb
-MainTab:CreateToggle({
-    Name = "Fullbright",
-    Info = "Makes dark areas visible",
-    Default = false,
-    Flag = "fullbright",
-    Callback = function(state)
-        if state then
-            origBright = lighting.Brightness
-            origAmb = lighting.Ambient
-            origOutAmb = lighting.OutdoorAmbient
-            lighting.Brightness = 2
-            lighting.Ambient = Color3.new(1,1,1)
-            lighting.OutdoorAmbient = Color3.new(1,1,1)
-        else
-            lighting.Brightness = origBright or 1
-            lighting.Ambient = origAmb or Color3.new(0,0,0)
-            lighting.OutdoorAmbient = origOutAmb or Color3.new(0,0,0)
+local function enableFullbright() origBright = lighting.Brightness; origAmb = lighting.Ambient; origOutAmb = lighting.OutdoorAmbient; lighting.Brightness = 2; lighting.Ambient = Color3.new(1,1,1); lighting.OutdoorAmbient = Color3.new(1,1,1) end
+local function disableFullbright() lighting.Brightness = origBright or 1; lighting.Ambient = origAmb or Color3.new(0,0,0); lighting.OutdoorAmbient = origOutAmb or Color3.new(0,0,0) end
+MainTab:Toggle({ Title = "Fullbright", Desc = "Makes dark areas visible", Flag = "fullbright", Callback = function(s) savedValues.fullbrightEnabled = s; if s then enableFullbright() else disableFullbright() end end })
+MainTab:Space({})
+
+local RitualTab = Window:Tab({ Title = "Ritual", Icon = "sparkles" })
+RitualTab:Space({})
+local spinConnection, spinSpeed = nil, 90
+RitualTab:Toggle({ Title = "Ritual Spin", Desc = "Spin continuously", Flag = "ritualspin", Callback = function(s)
+    if spinConnection then spinConnection:Disconnect(); spinConnection = nil end
+    if s then
+        local root = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            spinConnection = game:GetService("RunService").Heartbeat:Connect(function(dt) root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(spinSpeed) * dt, 0) end)
         end
     end
-})
+end })
+RitualTab:Space({})
+RitualTab:Slider({ Title = "Spin Speed", Value = { Min = 30, Max = 1000, Default = 90 }, Flag = "spinspeed", Callback = function(v) spinSpeed = v end })
+RitualTab:Space({})
 
--- ========== RITUAL TAB ==========
-local RitualTab = Window:CreateTab("Ritual", "sparkles")
-
--- Ritual Spin
-local spinConnection = nil
-local spinSpeed = 90 -- degrees per second
-
-RitualTab:CreateToggle({
-    Name = "Ritual Spin",
-    Info = "Makes your character spin continuously",
-    Default = false,
-    Flag = "ritualspin",
-    Callback = function(state)
-        if spinConnection then spinConnection:Disconnect() spinConnection = nil end
-        if state then
-            local root = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-            spinConnection = game:GetService("RunService").Heartbeat:Connect(function(dt)
-                root.CFrame = root.CFrame * CFrame.Angles(0, math.rad(spinSpeed) * dt, 0)
-            end)
-        end
+local ritualFlyConnection, ritualFlySpeed, platform = nil, 10, nil
+RitualTab:Toggle({ Title = "Ritual Fly", Desc = "Rise on invisible platform", Flag = "ritualfly", Callback = function(s)
+    if ritualFlyConnection then ritualFlyConnection:Disconnect(); ritualFlyConnection = nil end
+    if platform then platform:Destroy(); platform = nil end
+    if s then
+        local char = game.Players.LocalPlayer.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        platform = Instance.new("Part")
+        platform.Name = "RitualPlatform"
+        platform.Size = Vector3.new(10, 1, 10)
+        platform.Position = root.Position - Vector3.new(0, 3, 0)
+        platform.Anchored = true
+        platform.CanCollide = true
+        platform.Transparency = 1
+        platform.Material = Enum.Material.SmoothPlastic
+        platform.Parent = workspace
+        ritualFlyConnection = game:GetService("RunService").Heartbeat:Connect(function(dt)
+            if not platform or not platform.Parent then ritualFlyConnection:Disconnect(); ritualFlyConnection = nil; return end
+            platform.CFrame = platform.CFrame + Vector3.new(0, ritualFlySpeed * dt, 0)
+        end)
     end
-})
+end })
+RitualTab:Space({})
+RitualTab:Slider({ Title = "Fly Speed", Value = { Min = 5, Max = 50, Default = 10 }, Flag = "ritualflyspeed", Callback = function(v) ritualFlySpeed = v end })
+RitualTab:Space({})
 
-RitualTab:CreateSlider({
-    Name = "Spin Speed",
-    Range = {30, 1000}, -- wider range for noticeable difference
-    Increment = 5,
-    Suffix = "°/s",
-    CurrentValue = 90,
-    Flag = "spinspeed",
-    Callback = function(v) spinSpeed = v end
-})
 
--- Ritual Fly (platform lift)
-local ritualFlyConnection = nil
-local ritualFlySpeed = 10 -- studs per second
-local platform = nil
+local ESPTab = Window:Tab({ Title = "ESP", Icon = "eye" })
+ESPTab:Space({})
 
-RitualTab:CreateToggle({
-    Name = "Ritual Fly",
-    Info = "Rises on an invisible platform",
-    Default = false,
-    Flag = "ritualfly",
-    Callback = function(state)
-        if ritualFlyConnection then
-            ritualFlyConnection:Disconnect()
-            ritualFlyConnection = nil
-        end
-        if platform then
-            platform:Destroy()
-            platform = nil
-        end
-        if state then
-            local char = game.Players.LocalPlayer.Character
-            if not char then return end
-            local root = char:FindFirstChild("HumanoidRootPart")
-            if not root then return end
-
-            platform = Instance.new("Part")
-            platform.Name = "RitualPlatform"
-            platform.Size = Vector3.new(10, 1, 10)
-            platform.Position = root.Position - Vector3.new(0, 3, 0)
-            platform.Anchored = true
-            platform.CanCollide = true
-            platform.Transparency = 1
-            platform.Material = Enum.Material.SmoothPlastic
-            platform.Parent = workspace
-
-            ritualFlyConnection = game:GetService("RunService").Heartbeat:Connect(function(dt)
-                if not platform or not platform.Parent then
-                    ritualFlyConnection:Disconnect()
-                    ritualFlyConnection = nil
-                    return
-                end
-                platform.CFrame = platform.CFrame + Vector3.new(0, ritualFlySpeed * dt, 0)
-            end)
-        end
-    end
-})
-
-RitualTab:CreateSlider({
-    Name = "Fly Speed",
-    Range = {5, 50},
-    Increment = 1,
-    Suffix = " studs/s",
-    CurrentValue = 10,
-    Flag = "ritualflyspeed",
-    Callback = function(v) ritualFlySpeed = v end
-})
-
--- ========== ESP TAB ==========
-local ESPTab = Window:CreateTab("ESP", "eye")
 local ESPHolder = Instance.new("Folder")
 ESPHolder.Name = "PotatoESP"
 ESPHolder.Parent = game:GetService("CoreGui")
 
-local function createESP(player)
-    if player == game.Players.LocalPlayer then return end
-    local char = player.Character
+local espSettings = {
+    enabled = false,
+    box = true,
+    name = true,
+    boxColor = Color3.fromRGB(0, 150, 255),
+    boxTransparency = 0.2
+}
+
+local function clearESP()
+    for _, child in pairs(ESPHolder:GetChildren()) do
+        child:Destroy()
+    end
+end
+
+local function createESP(plr)
+    if plr == game.Players.LocalPlayer then return end
+    local char = plr.Character
     if not char then return end
     local root = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
     if not root then return end
 
-    local boxGui = Instance.new("BillboardGui")
-    boxGui.Name = player.Name .. "_Box"
-    boxGui.Adornee = root
-    boxGui.Size = UDim2.new(0,50,0,70)
-    boxGui.AlwaysOnTop = true
-    boxGui.ResetOnSpawn = false
-    local frame = Instance.new("Frame", boxGui)
-    frame.Size = UDim2.new(1,0,1,0)
-    frame.BackgroundColor3 = Color3.new(1,0,0)
-    frame.BackgroundTransparency = 0.3
-    frame.BorderSizePixel = 3
-    frame.BorderColor3 = Color3.new(1,1,1)
+    for _, child in pairs(ESPHolder:GetChildren()) do
+        if child.Name:find(plr.Name) then child:Destroy() end
+    end
 
-    local nameGui = Instance.new("BillboardGui")
-    nameGui.Name = player.Name .. "_Name"
-    nameGui.Adornee = root
-    nameGui.Size = UDim2.new(0,100,0,30)
-    nameGui.StudsOffset = Vector3.new(0,4.5,0)
-    nameGui.AlwaysOnTop = true
-    nameGui.ResetOnSpawn = false
-    local nameLabel = Instance.new("TextLabel", nameGui)
-    nameLabel.Size = UDim2.new(1,0,1,0)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = player.DisplayName or player.Name
-    nameLabel.TextColor3 = Color3.new(1,1,1)
-    nameLabel.TextStrokeColor3 = Color3.new(0,0,0)
-    nameLabel.TextStrokeTransparency = 0.3
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextScaled = true
+    if espSettings.box then
+        
+        local boxGui = Instance.new("BillboardGui")
+        boxGui.Name = plr.Name .. "_Box"
+        boxGui.Adornee = root
+        boxGui.Size = UDim2.new(0, 50, 0, 70)  -- Classic box size
+        boxGui.AlwaysOnTop = true
+        boxGui.ResetOnSpawn = false
+        boxGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    boxGui.Parent = ESPHolder
-    nameGui.Parent = ESPHolder
+        local frame = Instance.new("Frame", boxGui)
+        frame.Size = UDim2.new(1, 0, 1, 0)
+        frame.BackgroundColor3 = espSettings.boxColor
+        frame.BackgroundTransparency = espSettings.boxTransparency
+        frame.BorderSizePixel = 2  -- White outline thickness
+        frame.BorderColor3 = Color3.new(1, 1, 1)  -- White
+
+        boxGui.Parent = ESPHolder
+    end
+
+    if espSettings.name then
+        local nameGui = Instance.new("BillboardGui")
+        nameGui.Name = plr.Name .. "_Name"
+        nameGui.Adornee = root
+        nameGui.Size = UDim2.new(0, 100, 0, 20)
+        nameGui.StudsOffset = Vector3.new(0, 3.5, 0)
+        nameGui.AlwaysOnTop = true
+        nameGui.ResetOnSpawn = false
+
+        local nameLabel = Instance.new("TextLabel", nameGui)
+        nameLabel.Size = UDim2.new(1, 0, 1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = plr.DisplayName or plr.Name
+        nameLabel.TextColor3 = Color3.new(1, 1, 1)
+        nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)  -- Black outline for readability
+        nameLabel.TextStrokeTransparency = 0.3
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 14
+        nameLabel.TextScaled = false
+
+        nameGui.Parent = ESPHolder
+    end
 end
 
-local espEnabled = false
-ESPTab:CreateToggle({
-    Name = "Enable ESP",
-    Info = "Red box with player name above",
-    Default = false,
-    Flag = "esptoggle",
-    Callback = function(state)
-        espEnabled = state
-        if state then
-            for _, p in pairs(game.Players:GetPlayers()) do
-                if p ~= game.Players.LocalPlayer and p.Character then
-                    createESP(p)
-                end
-            end
-        else
-            ESPHolder:ClearAllChildren()
+ESPTab:Toggle({ Title = "ESP Toggle", Desc = "ESP", Flag = "esptoggle", Callback = function(s)
+    espSettings.enabled = s
+    if s then
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= game.Players.LocalPlayer then createESP(p) end
         end
-    end
-})
+    else clearESP() end
+end })
+ESPTab:Space({})
+
+ESPTab:Toggle({ Title = "Show Box", Desc = "Toggle box around players", Flag = "espBox", Default = true, Callback = function(s)
+    espSettings.box = s
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+end })
+ESPTab:Space({})
+
+ESPTab:Toggle({ Title = "Show Name", Desc = "Show player name", Flag = "espName", Default = true, Callback = function(s)
+    espSettings.name = s
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+end })
+ESPTab:Space({})
+
+ESPTab:Colorpicker({ Title = "Box Color", Desc = "Change box color", Flag = "espColor", Default = Color3.fromRGB(0, 150, 255), Callback = function(c)
+    espSettings.boxColor = c
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+end })
+ESPTab:Space({})
+
+ESPTab:Slider({ Title = "Box Transparency", Value = { Min = 0, Max = 1, Default = 0.2 }, Flag = "espTransparency", Callback = function(v)
+    espSettings.boxTransparency = v
+    if espSettings.enabled then clearESP(); for _, p in pairs(game.Players:GetPlayers()) do if p ~= game.Players.LocalPlayer then createESP(p) end end end
+end })
+ESPTab:Space({})
 
 game.Players.PlayerAdded:Connect(function(p)
-    p.CharacterAdded:Connect(function()
-        task.wait(1)
-        if espEnabled then createESP(p) end
-    end)
+    p.CharacterAdded:Connect(function() task.wait(1); if espSettings.enabled then createESP(p) end end)
+    if espSettings.enabled and p.Character then task.wait(1); createESP(p) end
 end)
-
 game.Players.PlayerRemoving:Connect(function(p)
     for _, child in pairs(ESPHolder:GetChildren()) do
         if child.Name:find(p.Name) then child:Destroy() end
     end
 end)
 
--- ========== UTILITY TAB ==========
-local UtilityTab = Window:CreateTab("Utility", "terminal")
-UtilityTab:CreateButton({
-    Name = "Load Wallhop",
-    Info = "You vs Homer wallhop",
-    Callback = function()
-        local s, e = pcall(function()
-            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-You-vs-Homer-wallhop-91780"))()
-        end)
-        Rayfield:Notify({
-            Title = "Wallhop",
-            Content = s and "Loaded! Ctrl+1 to toggle" or "Failed: " .. tostring(e):sub(1,50),
-            Duration = 3
-        })
+
+local UtilityTab = Window:Tab({ Title = "Utility", Icon = "terminal" })
+UtilityTab:Space({})
+UtilityTab:Toggle({ Title = "Wallhop Toggle", Desc = "Enable wallhop", Flag = "wallhopToggle", Callback = function(s) wallhop.enabled = s; if s then wallhop.jumpPower = 50 end end })
+UtilityTab:Space({})
+UtilityTab:Toggle({ Title = "Flick Rotation", Desc = "Rotate when wallhopping", Flag = "wallhopFlick", Default = true, Callback = function(s) wallhop.flick = s end })
+UtilityTab:Space({})
+UtilityTab:Dropdown({ Title = "Angle", Values = { "90°", "45°" }, Value = "90°", Flag = "wallhopAngle", Callback = function(o) wallhop.angle = o == "90°" and 90 or 45 end })
+UtilityTab:Space({})
+UtilityTab:Slider({ Title = "Push Force", Value = { Min = 30, Max = 100, Default = 52 }, Flag = "wallhopPush", Callback = function(v) wallhop.pushForce = v end })
+UtilityTab:Space({})
+UtilityTab:Slider({ Title = "Jump Power", Value = { Min = 30, Max = 100, Default = 50 }, Flag = "wallhopJump", Callback = function(v) wallhop.jumpPower = v end })
+UtilityTab:Space({})
+UtilityTab:Button({ Title = "Open Console", Desc = "Opens Roblox developer console", Callback = function() pcall(function() game:GetService("StarterGui"):SetCore("DevConsoleVisible", true) end) end })
+UtilityTab:Space({})
+
+
+local SupportTab = Window:Tab({ Title = "Support", Icon = "heart" })
+SupportTab:Space({})
+SupportTab:Button({ Title = "Discord Invite", Desc = "Click to copy invite link", Callback = function() setclipboard("https://discord.gg/CdDUfPWQR4") end })
+SupportTab:Space({})
+local function safeAddLabel(tab, text)
+    local success, err = pcall(function() tab:AddLabel({ Title = text }) end)
+    if not success then
+        tab:Button({ Title = text, Desc = "", Callback = function() end })
     end
-})
-UtilityTab:CreateButton({
-    Name = "Open Console",
-    Info = "Opens Roblox developer console",
-    Callback = function()
-        pcall(function() game:GetService("StarterGui"):SetCore("DevConsoleVisible", true) end)
-    end
-})
+end
+safeAddLabel(SupportTab, "In Beta/WIP")
+SupportTab:Space({})
 
 
-local SupportTab = Window:CreateTab("Support", "heart")
-SupportTab:CreateButton({
-    Name = "Discord Invite",
-    Info = "Click to copy invite link",
-    Callback = function()
-        setclipboard("https://discord.gg/CdDUfPWQR4")
-        Rayfield:Notify({ Title = "Discord", Content = "Invite copied!", Duration = 3 })
-    end
-})
-SupportTab:CreateLabel("In Beta/WIP")
+local SettingsTab = Window:Tab({ Title = "Settings", Icon = "settings" })
+SettingsTab:Space({})
 
-
-local SettingsTab = Window:CreateTab("Settings", "settings")
-SettingsTab:CreateButton({
-    Name = "Destroy UI",
-    Info = "Remove everything and unload",
+SettingsTab:Button({
+    Title = "Destroy Script",
+    Desc = "Completely remove the UI and stop all features",
     Callback = function()
         if spinConnection then spinConnection:Disconnect() end
         if ritualFlyConnection then ritualFlyConnection:Disconnect() end
         if platform then platform:Destroy() end
-        ESPHolder:Destroy()
-        Rayfield:Destroy()
+        if flyConnection then flyConnection:Disconnect() end
+        if flyBodyVelocity then flyBodyVelocity:Destroy() end
+        clearESP()
+        pcall(function() game:GetService("CoreGui"):FindFirstChild("PotatowarePremiumControls"):Destroy() end)
+        Window:Destroy()
     end
 })
+SettingsTab:Space({})
 
--- ========== RESPAWN HANDLER ==========
+
 game.Players.LocalPlayer.CharacterAdded:Connect(function(char)
-    repeat task.wait() until char and char:FindFirstChildOfClass("Humanoid")
+    task.wait(1)
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum then
+    if hum and not flying then
         hum.WalkSpeed = savedValues.walkspeed
-        hum.JumpPower = savedValues.jumppower
+        hum.JumpPower = 50
     end
-    if spinConnection then spinConnection:Disconnect() spinConnection = nil end
-    if ritualFlyConnection then ritualFlyConnection:Disconnect() ritualFlyConnection = nil end
-    if platform then platform:Destroy() platform = nil end
+    if savedValues.flyWasOn then startFly() end
+    if savedValues.fullbrightEnabled then enableFullbright() end
 end)
 
-
--- No
+-- ========== FINISH ==========
+WindUI:Notify({ Title = "Potatoware V3", Content = "Successfully Bypassed Ant
+repeat
